@@ -37,12 +37,14 @@ function accrued(y) {
 }
 function used(pid, y) { return S.leaves.filter(l => l.pid === pid && l.date.startsWith(y + "-")).reduce((a, l) => a + COST[l.type], 0); }
 /* 이월: 전년도 말(연말 전체 발생 기준) 잔여를 다음 해로 이월, 해마다 누적 */
+/* 사람마다 시작 연도(sy)가 있음: 추가된 해부터 계산. sy가 없는 기존 팀원은 2026년부터 */
+const startY = pid => { const p = S.people.find(q => q.id === pid); return Math.max(2026, (p && p.sy) || 2026); };
 function carry(pid, y) {
-  let c = 0;
-  for (let k = 2026; k < y; k++) c = accAt(k, 12) + c - used(pid, k);
-  return y <= 2026 ? 0 : c;
+  const s = startY(pid); let c = 0;
+  for (let k = s; k < y; k++) c = accAt(k, 12) + c - used(pid, k);
+  return y <= s ? 0 : c;
 }
-const stat = (pid, y) => { const a = accrued(y), c = carry(pid, y), u = used(pid, y); return { a, c, u, r: a + c - u }; };
+const stat = (pid, y) => { const a = y < startY(pid) ? 0 : accrued(y), c = carry(pid, y), u = used(pid, y); return { a, c, u, r: a + c - u }; };
 
 /* ===== 저장소 ===== */
 function seed() { return { people: [], leaves: [] }; }
@@ -158,7 +160,7 @@ function calendar(mode) {
 function table() {
   const y = ym.getFullYear(), cy = S.people.some(p => carry(p.id, y) !== 0);
   return `<div class="ttl">${y}년 팀원별 연차</div><div class="mu">${S.people.length}명</div><table><tr><th>이름</th><th>발생</th>${cy ? "<th>이월</th>" : ""}<th>사용</th><th>잔여</th><th></th></tr>` +
-    S.people.map(p => { const s = stat(p.id, y); return `<tr><td><a class="lk" data-go="${p.id}" style="font-size:inherit;text-decoration:none"><span class="dot" style="background:${col(p.id)}"></span> ${esc(p.name)}</a></td><td>${fmt(s.a)}</td>${cy ? `<td>${fmt(s.c)}</td>` : ""}<td>${fmt(s.u)}</td><td><b ${s.r < 0 ? 'style="color:var(--rd)"' : ""}>${fmt(s.r)}</b></td><td><a class="lk" data-rm="${p.id}">삭제</a></td></tr>`; }).join("") + "</table>";
+      S.people.map(p => { const s = stat(p.id, y); return `<tr><td><a class="lk" data-go="${p.id}" style="font-size:inherit;text-decoration:none"><span class="dot" style="background:${col(p.id)}"></span> ${esc(p.name)}</a></td><td>${fmt(s.a)}</td>${cy ? `<td>${fmt(s.c)}</td>` : ""}<td>${fmt(s.u)}</td><td><b ${s.r < 0 ? 'style="color:var(--rd)"' : ""}>${fmt(s.r)}</b></td><td><a class="lk" data-rm="${p.id}">삭제</a></td></tr>`; }).join("") + "</table>";
 }
 const gated = () => remote && !AUTH;
 function renderLogin(msg) {
@@ -228,7 +230,7 @@ function popup(date) {
   });
   document.body.appendChild(p);
 }
-function addPerson() { const n = ($("#nm") || {}).value; adding = false; if (n && n.trim()) mutate(d => d.people.push({ id: uid(), name: n.trim() })); else render(); }
+function addPerson() { const n = ($("#nm") || {}).value; adding = false; if (n && n.trim()) mutate(d => d.people.push({ id: uid(), name: n.trim(), sy: NOW.getFullYear() })); else render(); }
 
 document.addEventListener("click", e => {
   const t = e.target, q = s => t.closest(s);
