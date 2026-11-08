@@ -4,7 +4,7 @@ service cloud.firestore {
 
     function allowed() {
       return request.auth != null
-          && request.auth.token.email in ['pto1000@.naver.com'];
+          && request.auth.token.email in ['pto1000@naver.com'];
     }
 
     // 연차 데이터는 app/data 문서 하나에 JSON 문자열로 저장됩니다.
