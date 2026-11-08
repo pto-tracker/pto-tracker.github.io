@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function allowed() {
+      return request.auth != null
+          && request.auth.token.email in ['pto1000@.naver.com'];
+    }
+
+    // 연차 데이터는 app/data 문서 하나에 JSON 문자열로 저장됩니다.
+    match /app/data {
+      allow read: if allowed();
+      allow create, update: if allowed()
+                            && request.resource.data.keys().hasOnly(['json'])
+                            && request.resource.data.json is string
+                            && request.resource.data.json.size() < 200000;
+      allow delete: if false;
+    }
+  }
+}

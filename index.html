@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>연차 관리</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><h1>연차 관리</h1><div class="sub" id="today"></div><div class="sub">변경 사항이 자동으로 저장됩니다</div><button class="b" id="lo" data-lo="1" style="display:none;margin-top:6px;padding:3px 10px;font-size:12px">로그아웃</button></div>
+<div class="yr"><button class="sq" data-y="-1" id="yp">‹</button><span id="yl"></span><button class="sq" data-y="1">›</button></div></div>
+<div class="seg"><button data-t="me" class="on">연차 입력</button><button data-t="team">팀 캘린더</button></div>
+<div id="v"></div>
+<div class="note" id="mode"></div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
