@@ -5,7 +5,7 @@ const COST = { full: 1, am: .5, pm: .5 };
 const DOW = "일월화수목금토";
 const ORG = { "10-15": "개원기념일" };   /* 매년 반복되는 병원 기념일 (파란 글씨, 입력 불가) */
 
-/* 대한민국 공휴일 (대체공휴일 포함). 2030년 이후는 아래에 추가하세요. */
+/* 공휴일 (대체공휴일 포함) */
 const H = {};
 const addH = (y, list) => list.forEach(([md, n]) => H[`${y}-${md}`] = n);
 addH(2026, [["01-01","신정"],["02-16","설날 연휴"],["02-17","설날"],["02-18","설날 연휴"],["03-01","삼일절"],["03-02","대체공휴일"],["05-01","노동절"],["05-05","어린이날"],["05-24","부처님오신날"],["05-25","대체공휴일"],["06-03","지방선거"],["06-06","현충일"],["07-17","제헌절"],["08-15","광복절"],["08-17","대체공휴일"],["09-24","추석 연휴"],["09-25","추석"],["09-26","추석 연휴"],["09-28","대체공휴일"],["10-03","개천절"],["10-05","대체공휴일"],["10-09","한글날"],["12-25","성탄절"]]);
@@ -17,7 +17,7 @@ const hol = ds => ORG[ds.slice(5)] ? { n: ORG[ds.slice(5)], org: 1 } : H[ds] ? {
 const remote = !!(CONFIG.projectId && CONFIG.apiKey);
 const API = `https://firestore.googleapis.com/v1/projects/${CONFIG.projectId}/databases/(default)/documents/app/data?key=${CONFIG.apiKey}`;
 
-let S = { people: [], leaves: [] }, tab = "me", cur = null, adding = false, ym = new Date();
+let S = { people: [], leaves: [] }, tab = "team", cur = null, adding = false, ym = new Date();
 ym.setDate(1);
 const NOW = new Date(), TODAY = ymd(NOW.getFullYear(), NOW.getMonth(), NOW.getDate());
 const $ = s => document.querySelector(s);
@@ -144,9 +144,8 @@ function calendar(mode) {
     let inner = `<span class="n">${d}</span>` + (ho ? `<span class="hn">${esc(ho.n).replace("대체공휴일", "대체<wbr>공휴일").replace("개원기념일", "개원<wbr>기념일").replace("부처님오신날", "부처님<wbr>오신날")}</span>` : "");
     let style = "";
     if (mode === "me") {
-      if (off && !ho && ls.length === 0) cls += "pl";
-      else cls += "box ";
-      if (!off) cls += "go ";
+      cls += "box ";
+      cls += off ? "off " : "go ";
       if (ls[0]) { const c = col(cur); style = `background:${c}22;border-color:${c}55`; inner += `<span class="lb" style="color:${c}">${SHORT[ls[0].type]}</span>`; }
     } else {
       cls += "box ";
@@ -170,8 +169,8 @@ function renderLogin(msg) {
 async function doLogin() {
   const id = $("#em").value.trim().toLowerCase(), pw = $("#pw").value;
   if (!id || !pw) return renderLogin("아이디와 비밀번호를 입력해 주세요.");
-  const email = id.includes("@") ? id : id + "@" + CONFIG.idDomain;
-  try { await signIn(email, pw); S = await load(); render(); }
+  const email = id.includes("@") ? id : id + "@" + (CONFIG.idDomain || "pto-tracker.local");
+  try { await signIn(email, pw); S = await load(); tab = "team"; render(); }
   catch (e) {
     const m = e.message;
     if (AUTH && m.includes("403")) { setAuth(null); return renderLogin("접근 권한이 없는 계정이에요."); }
@@ -187,7 +186,6 @@ function render() {
   $("#today").textContent = `${NOW.getFullYear()}년 ${NOW.getMonth() + 1}월 ${NOW.getDate()}일 ${DOW[NOW.getDay()]}요일 기준`;
   $("#yl").textContent = y + "년"; $("#yp").disabled = y <= 2026;
   document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
-  $("#mode").textContent = remote ? "" : "※ 데모 모드: 데이터가 이 브라우저에만 저장됩니다. (Firebase 설정 후 팀 공유)";
   if (!S.people.find(p => p.id === cur)) cur = S.people[0] ? S.people[0].id : null;
   const v = $("#v");
   const addBtn = adding ? `<span class="pc add"><input id="nm" maxlength="20" placeholder="이름"><button class="b p" data-ok="1">추가</button></span>` : `<span class="pc add" data-addp="1">+ 팀원 추가</span>`;
@@ -202,17 +200,16 @@ function render() {
     const mine = S.leaves.filter(l => l.pid === cur && l.date.startsWith(y + "-")).sort((a, b) => a.date < b.date ? -1 : 1);
     const nm = y < NOW.getFullYear() ? 12 : y === NOW.getFullYear() ? NOW.getMonth() + 1 : 0;
     const accSub = nm ? `매월 1일 ${nm}개${nm >= 7 ? " + 7월 3개" : ""}` : "아직 발생 전 (매월 1일 1개)";
-    const strip = Array.from({ length: 12 }, (_, i) => { const mm = i + 1, cnt = S.leaves.filter(l => l.pid === cur && l.date.startsWith(`${y}-${pad(mm)}`)).reduce((a, l) => a + COST[l.type], 0), fut = y > NOW.getFullYear() || (y === NOW.getFullYear() && mm > NOW.getMonth() + 1); return `<div class="mo ${mm === m + 1 ? "on" : ""} ${fut ? "fut" : ""}" data-m="${i}">${mm}월${mm === 7 ? "<sup>+3</sup>" : ""}<b>${accAt(y, mm)}</b>${cnt ? `<u>사용 ${fmt(cnt)}</u>` : ""}</div>`; }).join("");
+    const strip = Array.from({ length: 12 }, (_, i) => { const mm = i + 1, cnt = S.leaves.filter(l => l.pid === cur && l.date.startsWith(`${y}-${pad(mm)}`)).reduce((a, l) => a + COST[l.type], 0), fut = y > NOW.getFullYear() || (y === NOW.getFullYear() && mm > NOW.getMonth() + 1); return `<div class="mo ${mm === m + 1 ? "on" : ""} ${fut ? "fut" : ""}" data-m="${i}">${mm}월${mm === 7 ? "<sup>+3</sup>" : ""}<u>${cnt ? "사용 " + fmt(cnt) : ""}</u></div>`; }).join("");
     v.innerHTML = `<div class="card"><div class="chips">${S.people.map(p => `<span class="pc ${p.id === cur ? "on" : ""}" data-p="${p.id}"><span class="dot" style="background:${col(p.id)}"></span>${esc(p.name)}</span>`).join("")}${addBtn}</div></div>
     <div class="card"><div class="ttl"><span class="dot" style="background:${c}"></span> ${esc(S.people.find(p => p.id === cur).name)} · ${y}년${s.c !== 0 ? ` <span class="tag" style="background:var(--bl);color:#fff">↪ ${y - 1}년에서 ${fmt(s.c)}일 이월</span>` : ""}</div>
     <div class="stats"><div class="s"><small>발생연차</small><b style="color:var(--pu)">${fmt(s.a)}</b> <span>일</span><em>${accSub}</em></div>
     ${s.c !== 0 ? `<div class="s"><small>이월연차</small><b style="color:var(--bl)">${fmt(s.c)}</b> <span>일</span><em>${y - 1}년 잔여 이월</em></div>` : ""}
     <div class="s"><small>사용연차</small><b style="color:var(--br)">${fmt(s.u)}</b> <span>일</span><em>${mine.length}건 입력</em></div>
-    <div class="s"><small>잔여연차</small><b ${s.r < 0 ? 'style="color:var(--rd)"' : ""}>${fmt(s.r)}</b> <span>일</span><em>${s.c !== 0 ? `이월 ${fmt(s.c)} 포함` : "발생 − 사용"}</em></div></div>
+    <div class="s"><small>잔여연차</small><b ${s.r < 0 ? 'style="color:var(--rd)"' : ""}>${fmt(s.r)}</b> <span>일</span><em>${s.c !== 0 ? `이월 ${fmt(s.c)} 포함` : ""}</em></div></div>
     <div class="bar"><i style="width:${pc}%"></i></div><div class="bf"><span>사용 ${fmt(s.u)} / ${s.c !== 0 ? "발생+이월" : "발생"} ${fmt(tot)}</span><span>${pc}% 사용</span></div></div>
     <div class="card"><div class="strip">${strip}</div></div>
-    <div class="two"><div class="card">${calendar("me")}<div class="mu" style="margin-top:8px">평일을 눌러 입력 · 공휴일과 개원기념일은 입력할 수 없어요</div></div>
-    <div class="card ul"><div class="ttl">${y}년 ${esc(S.people.find(p => p.id === cur).name)} 사용 내역</div><div class="mu">${mine.length}건</div>${s.c !== 0 ? `<div class="r"><span>1월 1일 · ${y - 1}년 잔여 이월</span><span class="tag" style="background:var(--bl);color:#fff">이월 ${s.c >= 0 ? "+" : ""}${fmt(s.c)}</span></div>` : ""}${mine.map(l => `<div class="r"><span>${dname(l.date)}${l.date > TODAY ? ' <span class="mu">예정</span>' : ""}</span><span><span class="tag">${LABEL[l.type]} ${COST[l.type]}</span> <a class="lk" data-del="${l.id}">취소</a></span></div>`).join("") || '<div class="mu" style="padding:8px 0">입력된 내역이 없어요</div>'}</div></div>`;
+    <div class="card ul"><div class="ttl">${y}년 ${esc(S.people.find(p => p.id === cur).name)} 사용 내역</div><div class="mu">${mine.length}건</div>${s.c !== 0 ? `<div class="r"><span>1월 1일 · ${y - 1}년 잔여 이월</span><span class="tag" style="background:var(--bl);color:#fff">이월 ${s.c >= 0 ? "+" : ""}${fmt(s.c)}</span></div>` : ""}${mine.map(l => `<div class="r"><span>${dname(l.date)}${l.date > TODAY ? ' <span class="mu">예정</span>' : ""}</span><span><span class="tag">${LABEL[l.type]} ${COST[l.type]}</span> <a class="lk" data-del="${l.pid}|${l.date}">취소</a></span></div>`).join("") || '<div class="mu" style="padding:8px 0">입력된 내역이 없어요</div>'}</div></div>`;
   }
   const inp = $("#nm"); if (inp) inp.focus();
 }
@@ -245,7 +242,7 @@ document.addEventListener("click", e => {
     if (p && confirm(`${p.name} 님과 연차 기록을 모두 삭제할까요?`)) mutate(d => { d.people = d.people.filter(x => x.id !== id); d.leaves = d.leaves.filter(l => l.pid !== id); });
   }
   else if (q("[data-date]")) popup(q("[data-date]").dataset.date);
-  else if (q("[data-del]")) { const id = q("[data-del]").dataset.del; mutate(d => d.leaves = d.leaves.filter(l => l.id !== id)); }
+  else if (q("[data-del]")) { const [pid, ds] = q("[data-del]").dataset.del.split("|"); if (confirm("이 연차를 취소할까요?")) mutate(d => { d.leaves = d.leaves.filter(l => !(l.pid === pid && l.date === ds)); }); }
   else if (q("[data-addp]")) { adding = true; render(); }
   else if (q("[data-ok]")) addPerson();
   else if (q("[data-login]")) doLogin();
