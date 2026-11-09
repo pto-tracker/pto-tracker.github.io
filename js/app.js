@@ -209,6 +209,7 @@ function render() {
     <div class="s"><small>잔여연차</small><b ${s.r < 0 ? 'style="color:var(--rd)"' : ""}>${fmt(s.r)}</b> <span>일</span><em>${s.c !== 0 ? `이월 ${fmt(s.c)} 포함` : ""}</em></div></div>
     <div class="bar"><i style="width:${pc}%"></i></div><div class="bf"><span>사용 ${fmt(s.u)} / ${s.c !== 0 ? "발생+이월" : "발생"} ${fmt(tot)}</span><span>${pc}% 사용</span></div></div>
     <div class="card"><div class="strip">${strip}</div></div>
+    <div class="two"><div class="card">${calendar("me")}</div>
     <div class="card ul"><div class="ttl">${y}년 ${esc(S.people.find(p => p.id === cur).name)} 사용 내역</div><div class="mu">${mine.length}건</div>${s.c !== 0 ? `<div class="r"><span>1월 1일 · ${y - 1}년 잔여 이월</span><span class="tag" style="background:var(--bl);color:#fff">이월 ${s.c >= 0 ? "+" : ""}${fmt(s.c)}</span></div>` : ""}${mine.map(l => `<div class="r"><span>${dname(l.date)}${l.date > TODAY ? ' <span class="mu">예정</span>' : ""}</span><span><span class="tag">${LABEL[l.type]} ${COST[l.type]}</span> <a class="lk" data-del="${l.pid}|${l.date}">취소</a></span></div>`).join("") || '<div class="mu" style="padding:8px 0">입력된 내역이 없어요</div>'}</div></div>`;
   }
   const inp = $("#nm"); if (inp) inp.focus();
